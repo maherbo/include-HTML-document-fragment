@@ -13,16 +13,18 @@ class DocFragment extends HTMLObjectElement{
 
 		if(docFragment != null){ // make sure the loaded data is a document fragment
 
+			this.nextSibling.innerHTML = '';
+
 			// If any, add the xml-stylesheets to the document
 			for(let i = 0; i < docFragment.styleSheets.length; i++){
 				let link = document.createElement("link");
 				link.setAttribute('rel', 'stylesheet');
 				link.setAttribute('href', docFragment.styleSheets[i].href);
-				this.parentNode.insertBefore(link, this);
+				this.nextSibling.appendChild(link);
 			}
 			
 			// Replace the content of calling <a is="include-fragment"> with the document fragment
-			this.nextSibling.innerHTML = docFragment.documentElement.outerHTML;
+			this.nextSibling.insertAdjacentHTML('beforeend', docFragment.documentElement.outerHTML);
 		}
 		else{ // not a document fragment
 			this.nextSibling.resetHyperlink();
@@ -113,4 +115,3 @@ customElements.define('include-fragment', IncludeDocumentFragment, { extends: 'a
 window.addEventListener('load', IncludeDocumentFragment.update);
 window.addEventListener('scroll', IncludeDocumentFragment.update);
 window.addEventListener('beforeprint', IncludeDocumentFragment.update);
-

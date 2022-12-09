@@ -17,14 +17,58 @@ class DocFragment extends HTMLObjectElement{
 
 			// If any, add the xml-stylesheets to the document
 			for(let i = 0; i < docFragment.styleSheets.length; i++){
-				let link = document.createElement("link");
-				link.setAttribute('rel', 'stylesheet');
-				link.setAttribute('href', docFragment.styleSheets[i].href);
-				this.nextSibling.appendChild(link);
+				if(docFragment.styleSheets[i].href != null){ // do not link stylesheet without hyperlink (HTMLStyleElement within the document)
+					let link = document.createElement("link");
+					link.setAttribute('rel', 'stylesheet');
+					link.setAttribute('href', docFragment.styleSheets[i].href);
+					this.nextSibling.appendChild(link);
+				}
 			}
 			
 			// Replace the content of calling <a is="include-fragment"> with the document fragment
-			this.nextSibling.insertAdjacentHTML('beforeend', docFragment.documentElement.outerHTML);
+			if(
+				docFragment.documentElement instanceof HTMLHtmlElement
+				&& docFragment.documentElement.childNodes[1] instanceof HTMLBodyElement
+			){ // it's an HTML document, load only the body element content (<object> will add <html>, <head>, and <body> if missing in HTML document fragment)
+				// Load everything separately such that you can evaluate HTMLScriptElement content, if any
+				let node;
+
+				for(let i = 0; i < docFragment.documentElement.childNodes[1].childNodes.length; i++){
+					node = docFragment.documentElement.childNodes[1].childNodes[i];
+
+					if(node instanceof HTMLElement){
+						this.nextSibling.insertAdjacentElement('beforeend', node);
+
+						if(node instanceof HTMLScriptElement){
+							// execute the script
+							if(node.src){
+								let object = document.createElement('object');
+								object.setAttribute('data', node.src);
+								object.onload = function(){
+									eval(this.contentDocument.childNodes[0].textContent);
+									this.parentNode.removeChild(this);
+								};
+								node.insertAdjacentElement('beforebegin', object);								
+							}
+							else{
+								eval(node.innerHTML);
+							}
+						}
+					}
+					else if(node instanceof Comment){
+						this.nextSibling.insertAdjacentHTML('beforeend', "<!--" + node.data + "-->");
+					}
+					else if(node instanceof Text){
+						this.nextSibling.insertAdjacentHTML('beforeend', node.data);
+					}
+					else{
+						this.nextSibling.insertAdjacentHTML('beforeend', node);
+					}
+				}
+			}
+			else{
+				this.nextSibling.insertAdjacentHTML('beforeend', docFragment.documentElement.outerHTML);
+			}
 		}
 		else{ // not a document fragment
 			this.nextSibling.resetHyperlink();
